@@ -1,0 +1,19 @@
+{
+  "name": "mpu6500",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "cli": "node mpu6500_reader.js",
+    "web": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "koffi": "^3.3.3",
+    "ws": "^8.22.0"
+  }
+}

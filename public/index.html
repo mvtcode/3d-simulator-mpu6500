@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MPU6500 3D IMU Simulator & Cockpit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <!-- Three.js, OrbitControls & GLTFLoader -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/hud.css">
+</head>
+<body>
+
+  <!-- Three.js Canvas Container -->
+  <div id="viewport-container"></div>
+
+  <!-- Cockpit Military HUD Overlay (Web Flight Simulator F-15 Style) -->
+  <div id="cockpit-hud">
+    <!-- Top Compass -->
+    <div class="hud-compass-container">
+      <div class="hud-compass-marker">▼</div>
+      <div class="hud-compass-tape" id="hudCompassTape"></div>
+    </div>
+    <div class="hud-compass-val" id="hudCompassVal">000° [N]</div>
+
+    <!-- Center Pitch & Horizon Gimbal -->
+    <div class="hud-pitch-container" id="hudPitchContainer">
+      <div class="hud-horizon-line" id="hudHorizon"></div>
+      <div class="pitch-line" style="top: calc(50% - 90px);"><span>+30</span><div class="pitch-bar"></div><span>+30</span></div>
+      <div class="pitch-line" style="top: calc(50% - 60px);"><span>+20</span><div class="pitch-bar"></div><span>+20</span></div>
+      <div class="pitch-line" style="top: calc(50% - 30px);"><span>+10</span><div class="pitch-bar"></div><span>+10</span></div>
+      <div class="pitch-line" style="top: calc(50% + 30px);"><span>-10</span><div class="pitch-bar dashed"></div><span>-10</span></div>
+      <div class="pitch-line" style="top: calc(50% + 60px);"><span>-20</span><div class="pitch-bar dashed"></div><span>-20</span></div>
+      <div class="pitch-line" style="top: calc(50% + 90px);"><span>-30</span><div class="pitch-bar dashed"></div><span>-30</span></div>
+    </div>
+
+    <!-- Center Crosshair & FPM -->
+    <div class="hud-crosshair"></div>
+    <div class="hud-fpm"></div>
+
+    <!-- Left Airspeed Tape -->
+    <div class="hud-speed-tape">
+      <div style="font-size:9px; opacity:0.7;">IAS</div>
+      <div style="font-size:18px; font-weight:700;" id="hudSpeedVal">320</div>
+      <div style="font-size:9px; margin-bottom:4px;">KTS</div>
+      <div style="font-size:11px; color:#38bdf8;" id="hudMachVal">M 0.85</div>
+    </div>
+
+    <!-- Right Altitude Tape -->
+    <div class="hud-alt-tape">
+      <div style="font-size:9px; opacity:0.7;">ALT</div>
+      <div style="font-size:18px; font-weight:700;" id="hudAltVal">5200</div>
+      <div style="font-size:9px; margin-bottom:4px;">FT</div>
+      <div style="font-size:10px; opacity:0.8;">BARO 29.92</div>
+    </div>
+
+    <!-- Tactical Avionics Data -->
+    <div class="hud-tactical-left">
+      <div style="font-weight:700;">F-15C EAGLE</div>
+      <div style="color:#38bdf8;">GUN: M61A1 [940]</div>
+      <div>MSL: AIM-9X [4]</div>
+      <div id="hudGForce" style="color:#f59e0b; font-weight:700;">G: 1.0</div>
+    </div>
+
+    <div class="hud-tactical-right">
+      <div style="font-weight:700;">RADAR: TWS ACTIVE</div>
+      <div>FLR: 60 / CHF: 30</div>
+      <div style="color:#10b981;">STATUS: ARMED</div>
+      <div id="hudFlapState" style="color:#38bdf8;">GEAR: UP</div>
+    </div>
+  </div>
+
+  <!-- UI HUD Layer -->
+  <div class="ui-layer">
+    <!-- Header -->
+    <header class="header-bar interactive">
+      <div class="title-group">
+        <div class="logo-badge">3D</div>
+        <div>
+          <h1>MPU6500 IMU 3D Simulator</h1>
+          <span>HARDWARE I2C REAL-TIME TELEMETRY</span>
+        </div>
+      </div>
+
+      <!-- Model Selector Tabs -->
+      <div class="model-selector">
+        <button class="tab-btn active" onclick="switchModel('cube')">🔲 Khung Hình Khối</button>
+        <button class="tab-btn" onclick="switchModel('airplane')">✈️ Tiêm Kích F-15</button>
+        <button class="tab-btn" onclick="switchModel('human')">🤖 Người 3D (Soldier)</button>
+        <button class="tab-btn" onclick="switchModel('board')">📟 Bo Mạch PCB</button>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls-group">
+        <!-- Soldier Animation Sub-controls -->
+        <div id="soldierControls" style="display:none; gap:6px; background:rgba(15,23,42,0.7); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:3px 8px; align-items:center;">
+          <button class="sub-btn active" id="btnAnimWalk" onclick="setSoldierAnim('Walk', true)">🚶 Đi Bộ (Walk)</button>
+          <button class="sub-btn" id="btnAnimRun" onclick="setSoldierAnim('Run', true)">🏃 Chạy (Run)</button>
+          <button class="sub-btn" id="btnAnimIdle" onclick="setSoldierAnim('Idle', true)">🧍 Đứng (Idle)</button>
+          <button class="sub-btn active" id="btnAnimAutoIMU" onclick="toggleAutoIMU()" title="Tự động đổi dáng Đi/Chạy/Dừng theo góc nghiêng Pitch của MPU6500">⚡ Auto IMU: BẬT</button>
+        </div>
+
+        <!-- Airplane Boost & Cockpit Controls -->
+        <button class="btn" id="afterburnerBtn" onclick="toggleAfterburner()" style="display:none;">
+          🔥 Tăng Lực (Boost)
+        </button>
+
+        <button class="btn" id="cockpitToggleBtn" onclick="toggleCockpitView()" style="display:none;">
+          🎯 Buồng Lái Ảo (Cockpit)
+        </button>
+
+        <div class="status-pill" id="statusPill">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText">CONNECTING...</span>
+        </div>
+
+        <button class="btn" onclick="resetCamera()">🎥 Reset View</button>
+        <button class="btn" onclick="tare()" title="Cân bằng góc hiện tại về 0°">⚖️ Tare (Zero)</button>
+        <button class="btn" onclick="calibrate()" title="Hiệu chuẩn trôi tĩnh Gyro trong 2 giây">🎯 Calib Gyro</button>
+
+        <!-- Axis Configuration Toolbar -->
+        <div style="display:inline-flex; gap:4px; background:rgba(15,23,42,0.65); padding:3px 7px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); align-items:center;">
+          <span style="font-size:10px; color:#64748b; font-weight:700;">TRỤC:</span>
+          <button class="axis-toggle-btn" id="btnSwapXY" onclick="toggleSwapXY()" title="Hoán đổi góc trục Roll và Pitch cho nhau">⇄ Swap X/Y</button>
+          <button class="axis-toggle-btn" id="btnInvRoll" onclick="toggleInvRoll()" title="Đảo chiều quay trục X (Roll)">⇅ Đảo X</button>
+          <button class="axis-toggle-btn" id="btnInvPitch" onclick="toggleInvPitch()" title="Đảo chiều quay trục Y (Pitch)">⇅ Đảo Y</button>
+          <button class="axis-toggle-btn" id="btnInvYaw" onclick="toggleInvYaw()" title="Đảo chiều quay trục Z (Yaw)">⇅ Đảo Z</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Hint -->
+    <div class="viewport-hint" id="viewportHint">
+      🖱️ Kéo chuột trái để xoay 3D | Cuộn chuột để phóng to/thu nhỏ
+    </div>
+
+    <!-- Dashboard Cards -->
+    <div class="dashboard-body interactive">
+      <!-- Left Cards -->
+      <div class="left-panel">
+        <div class="glass-card">
+          <div class="card-title">
+            <span>Orientation (Euler)</span>
+            <span style="font-family:'JetBrains Mono'; color:#38bdf8;" id="hzCounter">50 Hz</span>
+          </div>
+          <div class="angle-grid">
+            <div class="angle-box roll">
+              <div class="angle-label">ROLL (Trái/Phải)</div>
+              <div class="angle-value" id="valRoll">0.0°</div>
+            </div>
+            <div class="angle-box pitch">
+              <div class="angle-label">PITCH (Trước/Sau)</div>
+              <div class="angle-value" id="valPitch">0.0°</div>
+            </div>
+            <div class="angle-box yaw">
+              <div class="angle-label">YAW (Xoay Z)</div>
+              <div class="angle-value" id="valYaw">0.0°</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <div class="card-title">
+            <span>Gia Tốc Kế (Accelerometer)</span>
+            <span id="tempBadge" style="color:#f59e0b; font-family:'JetBrains Mono';">31.5°C</span>
+          </div>
+          <div class="telemetry-row">
+            <div class="bar-item">
+              <span class="bar-axis" style="color:#38bdf8;">X</span>
+              <div class="bar-track"><div class="bar-fill" id="barAx" style="background:#38bdf8;"></div></div>
+              <span class="bar-val" id="txtAx">0.00g</span>
+            </div>
+            <div class="bar-item">
+              <span class="bar-axis" style="color:#10b981;">Y</span>
+              <div class="bar-track"><div class="bar-fill" id="barAy" style="background:#10b981;"></div></div>
+              <span class="bar-val" id="txtAy">0.00g</span>
+            </div>
+            <div class="bar-item">
+              <span class="bar-axis" style="color:#f59e0b;">Z</span>
+              <div class="bar-track"><div class="bar-fill" id="barAz" style="background:#f59e0b;"></div></div>
+              <span class="bar-val" id="txtAz">1.00g</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <div class="card-title">
+            <span>Con Quay Hồi Chuyển (Gyro Rate)</span>
+          </div>
+          <div class="telemetry-row">
+            <div class="bar-item">
+              <span class="bar-axis" style="color:#38bdf8;">Gx</span>
+              <div class="bar-track"><div class="bar-fill" id="barGx" style="background:#38bdf8;"></div></div>
+              <span class="bar-val" id="txtGx">0.0°/s</span>
+            </div>
+            <div class="bar-item">
+              <span class="bar-axis" style="color:#10b981;">Gy</span>
+              <div class="bar-track"><div class="bar-fill" id="barGy" style="background:#10b981;"></div></div>
+              <span class="bar-val" id="txtGy">0.0°/s</span>
+            </div>
+            <div class="bar-item">
+              <span class="bar-axis" style="color:#f59e0b;">Gz</span>
+              <div class="bar-track"><div class="bar-fill" id="barGz" style="background:#f59e0b;"></div></div>
+              <span class="bar-val" id="txtGz">0.0°/s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Strip Chart & Pedometer -->
+      <div class="right-panel">
+        <!-- Thẻ dữ liệu Vận Động Pedometer khi ở chế độ Người 3D -->
+        <div class="glass-card" id="soldierMotionCard" style="display:none; margin-bottom:12px;">
+          <div class="card-title">
+            <span>🏃 Vận Động & Bước Chân (Pedometer)</span>
+            <span id="gaitBadge" style="color:#10b981; font-family:'JetBrains Mono'; font-weight:700;">WALK</span>
+          </div>
+          <div class="angle-grid">
+            <div class="angle-box" style="border-top:3px solid #10b981;">
+              <div class="angle-label">TỐC ĐỘ</div>
+              <div class="angle-value" id="valWalkSpeed" style="color:#10b981;">4.9 <span style="font-size:10px;">km/h</span></div>
+            </div>
+            <div class="angle-box" style="border-top:3px solid #38bdf8;">
+              <div class="angle-label">QUÃNG ĐƯỜNG</div>
+              <div class="angle-value" id="valWalkDist" style="color:#38bdf8;">0.0 <span style="font-size:10px;">m</span></div>
+            </div>
+            <div class="angle-box" style="border-top:3px solid #f59e0b;">
+              <div class="angle-label">BƯỚC CHÂN</div>
+              <div class="angle-value" id="valWalkSteps" style="color:#f59e0b;">0</div>
+            </div>
+          </div>
+          <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--text-muted); font-family:'JetBrains Mono', monospace;">
+            <span>NHỊP BƯỚC: <b id="valWalkCadence" style="color:#fff;">112 SPM</b></span>
+            <button class="sub-btn" onclick="resetWalkOdometer()" style="padding:2px 8px; font-size:10px;">🔄 Đặt lại</button>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <div class="card-title">
+            <span>Đồ Thị Góc Thời Gian Thực</span>
+          </div>
+          <canvas id="chartCanvas" width="400" height="120"></canvas>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#38bdf8;"></div>Roll (Trái/Phải)</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#10b981;"></div>Pitch (Trước/Sau)</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div>Yaw (Xoay Z)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+  <!-- Modular Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/scene.js"></script>
+  <script src="js/models.js"></script>
+  <script src="js/hud.js"></script>
+  <script src="js/telemetry.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,208 @@
+/* Fighter Jet Cockpit HUD Overlay - Military Avionics Style */
+#cockpit-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+  display: none;
+  overflow: hidden;
+}
+
+/* Top Compass / Heading Tape */
+.hud-compass-container {
+  position: absolute;
+  top: 25px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 360px;
+  height: 44px;
+  border-bottom: 2px solid rgba(16, 185, 129, 0.8);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
+  background: rgba(6, 78, 59, 0.15);
+}
+
+.hud-compass-tape {
+  position: absolute;
+  display: flex;
+  height: 100%;
+  align-items: flex-end;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #10b981;
+  will-change: transform;
+  width: 3600px;
+  transition: transform 0.05s linear;
+}
+
+.hud-compass-marker {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #10b981;
+  font-size: 10px;
+  text-shadow: 0 0 6px #10b981;
+  z-index: 2;
+}
+
+.hud-compass-val {
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #10b981;
+  background: rgba(6, 78, 59, 0.4);
+  border: 1px solid #10b981;
+  padding: 2px 10px;
+  border-radius: 4px;
+  text-shadow: 0 0 8px #10b981;
+}
+
+/* Crosshair & Flight Path Marker */
+.hud-crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  height: 140px;
+  border: 1px dashed rgba(16, 185, 129, 0.35);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hud-crosshair::before, .hud-crosshair::after {
+  content: '';
+  position: absolute;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+.hud-crosshair::before { width: 34px; height: 2px; }
+.hud-crosshair::after { width: 2px; height: 34px; }
+
+/* FPM (Flight Path Marker) Circle with wings */
+.hud-fpm {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border: 2px solid #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #10b981;
+}
+.hud-fpm::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 6px;
+  background: #10b981;
+}
+.hud-fpm::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -12px;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 2px;
+  background: #10b981;
+}
+
+/* Pitch Ladder and Artificial Horizon */
+.hud-pitch-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 420px;
+  height: 420px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: transform 0.05s linear;
+}
+
+.hud-horizon-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 340px;
+  height: 2px;
+  background: #10b981;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px #10b981;
+}
+
+.pitch-line {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 170px;
+  color: #10b981;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.pitch-bar {
+  width: 50px;
+  height: 2px;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.pitch-bar.dashed {
+  background: repeating-linear-gradient(90deg, #10b981 0, #10b981 5px, transparent 5px, transparent 10px);
+}
+
+/* Left & Right Tactical Tapes */
+.hud-speed-tape, .hud-alt-tape {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(6, 78, 59, 0.35);
+  border: 1px solid #10b981;
+  padding: 14px 12px;
+  border-radius: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #10b981;
+  text-align: center;
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.25);
+}
+
+.hud-speed-tape { left: calc(50% - 270px); }
+.hud-alt-tape { right: calc(50% - 270px); }
+
+/* Tactical Avionics Corner HUD */
+.hud-tactical-left, .hud-tactical-right {
+  position: absolute;
+  top: 100px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #10b981;
+  line-height: 1.6;
+  background: rgba(6, 78, 59, 0.25);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.hud-tactical-left { left: 40px; }
+.hud-tactical-right { right: 40px; text-align: right; }
+
